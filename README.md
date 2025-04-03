@@ -50,7 +50,7 @@ python -m llava.serve.cli \
 
 ### Evaluation with LMMs-Eval
 
-[LMMs-Eval] (https://github.com/EvolvingLMMs-Lab/lmms-eval) is an evaluation framework meticulously crafted for consistent and efficient evaluation of LMM.
+[LMMs-Eval](https://github.com/EvolvingLMMs-Lab/lmms-eval) is an evaluation framework meticulously crafted for consistent and efficient evaluation of LMM.
 
 ```bash
 export MODEL_PATH="liuhaotian/llava-v1.5-7b"
