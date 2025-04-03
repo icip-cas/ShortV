@@ -261,17 +261,17 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
     def __init__(self, config: LlamaConfig):
         super(LlavaLlamaModel, self).__init__(config)
 
-        self.skip_layers = []
-        env_str = os.getenv("SKIP_LAYERS")
+        self.replaced_layers = []
+        env_str = os.getenv("REPLACED_LAYERS")
         try:
             cleaned_str = env_str.replace(' ', '')
-            self.skip_layers = list(map(int, cleaned_str.split(',')))
+            self.replaced_layers = list(map(int, cleaned_str.split(',')))
         except:
             pass
 
         self.layers = nn.ModuleList(
             [
-                ShortvDecoderLayer(config, layer_idx) if layer_idx in self.skip_layers 
+                ShortvDecoderLayer(config, layer_idx) if layer_idx in self.replaced_layers 
                 else LlamaDecoderLayer(config, layer_idx)
                 for layer_idx in range(config.num_hidden_layers)
             ]
@@ -382,7 +382,7 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
                     use_cache,
                 )
             else:
-                if idx in self.skip_layers and q_len > 1:
+                if idx in self.replaced_layers and q_len > 1:
                     attention_mask = sdpa_attention_mask
                 else:
                     attention_mask = None
