@@ -2,7 +2,7 @@
 
 ## Evaluate on Custom Datasets
 
-You can evaluate LLaVA on your custom datasets by converting your dataset to LLaVA's jsonl format, and evaluate using [`model_vqa.py`](https://github.com/icip-cas/ShortV/blob/main/llava/eval/model_vqa.py).
+You can evaluate ShortV on your custom datasets by converting your dataset to LLaVA's jsonl format, and evaluate using [`model_vqa.py`](https://github.com/icip-cas/ShortV/blob/main/llava/eval/model_vqa.py).
 
 Below we provide a general guideline for evaluating datasets with some common formats.
 
@@ -140,7 +140,7 @@ CUDA_VISIBLE_DEVICES=0 bash scripts/v1_5/eval/mmvet.sh
 
 ## More Benchmarks
 
-Below are awesome benchmarks for multimodal understanding from the research community, that are not initially included in the LLaVA-1.5 release.
+Below are awesome benchmarks for multimodal understanding from the research community.
 
 ### Q-Bench
 
