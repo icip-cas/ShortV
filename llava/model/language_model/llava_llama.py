@@ -18,6 +18,7 @@ import os
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 from transformers import AutoConfig, AutoModelForCausalLM, \
                          LlamaConfig, LlamaModel, LlamaForCausalLM
@@ -29,7 +30,15 @@ import warnings
 import random
 from transformers.modeling_outputs import BaseModelOutputWithPast, CausalLMOutputWithPast
 from transformers.cache_utils import Cache, DynamicCache
-from transformers.models.llama.modeling_llama import LlamaDecoderLayer, LlamaMLP, LlamaAttention, LlamaRMSNorm, repeat_kv, rotate_half
+from transformers.models.llama.modeling_llama import (
+    LlamaDecoderLayer,
+    LlamaAttention,
+    repeat_kv,
+    rotate_half,
+    add_start_docstrings_to_model_forward,
+    replace_return_docstrings,
+    LLAMA_INPUTS_DOCSTRING
+)
 
 from transformers.modeling_attn_mask_utils import (
     AttentionMaskConverter,
@@ -46,6 +55,12 @@ logger = logging.get_logger(__name__)
 
 from ..llava_arch import LlavaMetaModel, LlavaMetaForCausalLM
 
+
+class temp_cache:
+    cal_lc = False
+    last_embedding_list = []
+    LC_total= []
+    
 
 class LlavaConfig(LlamaConfig):
     model_type = "llava_llama"
@@ -172,6 +187,80 @@ class LlavaLlamaSdpaAttention(LlamaAttention):
         attn_output = self.o_proj(attn_output)
 
         return attn_output, None, past_key_value
+    
+
+class ShortvDecoderLayer_LC(LlamaDecoderLayer):
+    def __init__(self, config: LlamaConfig, layer_idx: int):
+        super().__init__(config, layer_idx)
+
+    def forward(
+        self,
+        hidden_states: torch.Tensor,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_value: Optional[Tuple[torch.Tensor]] = None,
+        output_attentions: Optional[bool] = False,
+        use_cache: Optional[bool] = False,
+        replaced: Optional[bool] = False,
+        n_visual: Optional[int] = 0,
+        **kwargs,
+    ) -> Tuple[torch.FloatTensor, Optional[Tuple[torch.FloatTensor, torch.FloatTensor]]]:
+        """
+        Args:
+            hidden_states (`torch.FloatTensor`): input to the layer of shape `(batch, seq_len, embed_dim)`
+            attention_mask (`torch.FloatTensor`, *optional*):
+                attention mask of size `(batch_size, sequence_length)` if flash attention is used or `(batch_size, 1,
+                query_sequence_length, key_sequence_length)` if default attention is used.
+            output_attentions (`bool`, *optional*):
+                Whether or not to return the attentions tensors of all attention layers. See `attentions` under
+                returned tensors for more detail.
+            use_cache (`bool`, *optional*):
+                If set to `True`, `past_key_values` key value states are returned and can be used to speed up decoding
+                (see `past_key_values`).
+            past_key_value (`Tuple(torch.FloatTensor)`, *optional*): cached past key and value projection states
+        """
+        if "padding_mask" in kwargs:
+            warnings.warn(
+                "Passing `padding_mask` is deprecated and will be removed in v4.37. Please make sure use `attention_mask` instead.`"
+            )
+
+        text_start_idx = 35 + n_visual
+
+        residual = hidden_states
+
+        hidden_states = self.input_layernorm(hidden_states)
+
+        # Self Attention
+        hidden_states, self_attn_weights, present_key_value = self.self_attn(
+            hidden_states=hidden_states,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_value=past_key_value,
+            output_attentions=output_attentions,
+            use_cache=use_cache,
+            **kwargs,
+        )
+        if replaced:
+            hidden_states[:, 35:text_start_idx] = 0
+        hidden_states = residual + hidden_states
+
+        # Fully Connected
+        residual = hidden_states
+        hidden_states = self.post_attention_layernorm(hidden_states)
+        hidden_states = self.mlp(hidden_states)
+        if replaced:
+            hidden_states[:, 35:text_start_idx] = 0
+        hidden_states = residual + hidden_states
+
+        outputs = (hidden_states,)
+
+        if output_attentions:
+            outputs += (self_attn_weights,)
+
+        if use_cache:
+            outputs += (present_key_value,)
+
+        return outputs
 
 
 class ShortvDecoderLayer(LlamaDecoderLayer):
@@ -269,14 +358,18 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
         except:
             pass
 
-        self.layers = nn.ModuleList(
-            [
-                ShortvDecoderLayer(config, layer_idx) if layer_idx in self.replaced_layers 
-                else LlamaDecoderLayer(config, layer_idx)
-                for layer_idx in range(config.num_hidden_layers)
-            ]
-        )
         self.n_visual = None
+
+        if temp_cache.cal_lc:
+            self.layers = nn.ModuleList([ShortvDecoderLayer_LC(config, layer_idx) for layer_idx in range(config.num_hidden_layers)])
+        else:
+            self.layers = nn.ModuleList(
+                [
+                    ShortvDecoderLayer(config, layer_idx) if layer_idx in self.replaced_layers 
+                    else LlamaDecoderLayer(config, layer_idx)
+                    for layer_idx in range(config.num_hidden_layers)
+                ]
+            )
 
     def forward(
         self,
@@ -358,6 +451,58 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
         all_self_attns = () if output_attentions else None
         next_decoder_cache = None
 
+        if temp_cache.cal_lc:
+            original_hidden_states = hidden_states
+            ori_position_ids = position_ids
+            temp_cache.last_embedding_list = []
+
+            for replaced_layer_idx in range(len(self.layers)):
+                hidden_states = original_hidden_states
+                position_ids = ori_position_ids
+
+                for idx, decoder_layer in enumerate(self.layers):
+                    replaced = (idx == replaced_layer_idx)
+                    layer_outputs = decoder_layer(
+                        hidden_states,
+                        attention_mask=attention_mask,
+                        position_ids=position_ids,
+                        past_key_value=None,
+                        output_attentions=output_attentions,
+                        use_cache=False,
+                        replaced=replaced,
+                        n_visual=self.n_visual,
+                    )
+
+                    hidden_states = layer_outputs[0]
+
+                hidden_states = self.norm(hidden_states)
+                last_embedding = hidden_states[:,-1]
+                temp_cache.last_embedding_list.append(last_embedding)
+
+            hidden_states = original_hidden_states
+            position_ids = ori_position_ids
+
+            for decoder_layer in self.layers:
+                layer_outputs = decoder_layer(
+                    hidden_states,
+                    attention_mask=attention_mask,
+                    position_ids=position_ids,
+                    past_key_value=None,
+                    output_attentions=output_attentions,
+                    use_cache=False,
+                )
+
+                hidden_states = layer_outputs[0]
+
+            hidden_states = self.norm(hidden_states)
+
+            return BaseModelOutputWithPast(
+                last_hidden_state=hidden_states,
+                past_key_values=None,
+                hidden_states=all_hidden_states,
+                attentions=all_self_attns,
+            )
+
         text_start_idx = 35 + self.n_visual
         q_len = hidden_states.shape[1] - text_start_idx + 35
         bsz = hidden_states.shape[0]
@@ -422,9 +567,121 @@ class LlavaLlamaModel(LlavaMetaModel, LlamaModel):
             hidden_states=all_hidden_states,
             attentions=all_self_attns,
         )
+    
+
+_CONFIG_FOR_DOC = "LlamaConfig"
+class ShortvLlamaForCausalLM(LlamaForCausalLM):
+    def __init__(self, config):
+        super().__init__(config)
+
+    @add_start_docstrings_to_model_forward(LLAMA_INPUTS_DOCSTRING)
+    @replace_return_docstrings(output_type=CausalLMOutputWithPast, config_class=_CONFIG_FOR_DOC)
+    def forward(
+        self,
+        input_ids: torch.LongTensor = None,
+        attention_mask: Optional[torch.Tensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        use_cache: Optional[bool] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> Union[Tuple, CausalLMOutputWithPast]:
+        r"""
+        Args:
+            labels (`torch.LongTensor` of shape `(batch_size, sequence_length)`, *optional*):
+                Labels for computing the masked language modeling loss. Indices should either be in `[0, ...,
+                config.vocab_size]` or -100 (see `input_ids` docstring). Tokens with indices set to `-100` are ignored
+                (masked), the loss is only computed for the tokens with labels in `[0, ..., config.vocab_size]`.
+
+        Returns:
+
+        Example:
+
+        ```python
+        >>> from transformers import AutoTokenizer, LlamaForCausalLM
+
+        >>> model = LlamaForCausalLM.from_pretrained("meta-llama/Llama-2-7b-hf")
+        >>> tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-2-7b-hf")
+
+        >>> prompt = "Hey, are you conscious? Can you talk to me?"
+        >>> inputs = tokenizer(prompt, return_tensors="pt")
+
+        >>> # Generate
+        >>> generate_ids = model.generate(inputs.input_ids, max_length=30)
+        >>> tokenizer.batch_decode(generate_ids, skip_special_tokens=True, clean_up_tokenization_spaces=False)[0]
+        "Hey, are you conscious? Can you talk to me?\nI'm not conscious, but I can talk to you."
+        ```"""
+        output_attentions = output_attentions if output_attentions is not None else self.config.output_attentions
+        output_hidden_states = (
+            output_hidden_states if output_hidden_states is not None else self.config.output_hidden_states
+        )
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+
+        # decoder outputs consists of (dec_features, layer_state, dec_hidden, dec_attn)
+        outputs = self.model(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            position_ids=position_ids,
+            past_key_values=past_key_values,
+            inputs_embeds=inputs_embeds,
+            use_cache=use_cache,
+            output_attentions=output_attentions,
+            output_hidden_states=output_hidden_states,
+            return_dict=return_dict,
+        )
+
+        hidden_states = outputs[0]
+        
+        if self.config.pretraining_tp > 1:
+            lm_head_slices = self.lm_head.weight.split(self.vocab_size // self.config.pretraining_tp, dim=0)
+            logits = [F.linear(hidden_states, lm_head_slices[i]) for i in range(self.config.pretraining_tp)]
+            logits = torch.cat(logits, dim=-1)
+
+        else:
+            logits = self.lm_head(hidden_states)
+            
+            if temp_cache.cal_lc:
+                if hidden_states.shape[1] > 1:
+                    LC_list = [F.cosine_similarity(hidden_states[:, -1], hidden_state) for hidden_state in temp_cache.last_embedding_list]
+
+                    logits_list = [self.lm_head(hidden_states) for hidden_states in temp_cache.last_embedding_list]
+                    KL_div = nn.KLDivLoss(reduction='batchmean')
+                    LC_list = [KL_div(F.log_softmax(logits[:,-1],dim=1), F.softmax(logits_list[i],dim=1)).item() for i in range(len(logits_list))] 
+                    
+                    temp_cache.LC_total.append(LC_list)
+
+        logits = logits.float()
+
+        loss = None
+        if labels is not None:
+            # Shift so that tokens < n predict n
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = labels[..., 1:].contiguous()
+            # Flatten the tokens
+            loss_fct = nn.CrossEntropyLoss()
+            shift_logits = shift_logits.view(-1, self.config.vocab_size)
+            shift_labels = shift_labels.view(-1)
+            # Enable model parallelism
+            shift_labels = shift_labels.to(shift_logits.device)
+            loss = loss_fct(shift_logits, shift_labels)
+
+        if not return_dict:
+            output = (logits,) + outputs[1:]
+            return (loss,) + output if loss is not None else output
+
+        return CausalLMOutputWithPast(
+            loss=loss,
+            logits=logits,
+            past_key_values=outputs.past_key_values,
+            hidden_states=outputs.hidden_states,
+            attentions=outputs.attentions,
+        )
 
 
-class LlavaLlamaForCausalLM(LlamaForCausalLM, LlavaMetaForCausalLM):
+class LlavaLlamaForCausalLM(ShortvLlamaForCausalLM, LlavaMetaForCausalLM):
     config_class = LlavaConfig
 
     def __init__(self, config):

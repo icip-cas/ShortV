@@ -381,6 +381,10 @@ class Llava(lmms):
             if "num_beams" not in gen_kwargs:
                 gen_kwargs["num_beams"] = 1
 
+            from llava.model.language_model.llava_llama import temp_cache
+            if temp_cache.cal_lc:
+                gen_kwargs["max_new_tokens"] = 1
+
             input_ids_list = [tokenizer_image_token(prompt, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt") for prompt in question_input]
             pad_token_ids = self.tokenizer.pad_token_id if self.tokenizer.pad_token_id is not None else self.tokenizer.eos_token_id
             input_ids = self.pad_sequence(input_ids_list, batch_first=True, padding_value=pad_token_ids).to(self.device)

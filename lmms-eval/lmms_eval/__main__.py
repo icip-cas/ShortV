@@ -231,6 +231,12 @@ def parse_eval_args() -> argparse.Namespace:
         help="Timezone for datetime string, e.g. Asia/Singapore, America/New_York, America/Los_Angeles. You can check the full list via `import pytz; print(pytz.common_timezones)`",
     )
     parser.add_argument(
+        "--cal_lc",
+        action="store_true",
+        default=False,
+        help="calculate lc",
+    )
+    parser.add_argument(
         "--hf_hub_log_args",
         type=str,
         default="",
@@ -530,4 +536,16 @@ def print_results(args, results):
 
 
 if __name__ == "__main__":
+    import torch
+    from llava.model.language_model.llava_llama import temp_cache
+    
+    args = parse_eval_args()
+    temp_cache.cal_lc = args.cal_lc
+
     cli_evaluate()
+
+    if args.cal_lc:
+        lc_results = torch.tensor(temp_cache.LC_total).mean(dim=0)
+        print("LC results: ", lc_results)
+        sorted_indices = torch.argsort(lc_results)
+        print("Replaced layers order: ", ",".join(map(str, sorted_indices.tolist())))

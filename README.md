@@ -70,6 +70,27 @@ accelerate launch  --num_processes=1 --main_process_port=12346 -m lmms_eval \
 
 See [Evaluation.md](https://github.com/icip-cas/ShortV/blob/main/docs/Evaluation.md).
 
+## Calculating LC Scores and Identifying Ineffective Layers
+
+To identify which layers are ineffective, we calculate visual LC scores for all MLLM layers.
+
+```bash
+export MODEL_PATH="liuhaotian/llava-v1.5-7b"
+export MODEL_NAME="llava_7b"
+export CONV_MODE="v1"
+accelerate launch  --num_processes=1 --main_process_port=12346 -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${MODEL_PATH},conv_template=${CONV_MODE}  \
+    --tasks gqa,flickr30k_test \
+    --batch_size 1 \
+    --log_samples_suffix ${MODEL_NAME} \
+    --output_path ./logs/ \
+    --limit 20 \
+    --cal_lc
+```
+
+You will get visual LC scores for each layer, and the order of layer replacement.
+
 ## Acknowledge
 This work is built upon the [LLaVA](https://github.com/haotian-liu/LLaVA), [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval), and [VTW](https://github.com/lzhxmu/VTW)
 
