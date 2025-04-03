@@ -72,3 +72,16 @@ See [Evaluation.md](https://github.com/icip-cas/ShortV/blob/main/docs/Evaluation
 
 ## Acknowledge
 This work is built upon the [LLaVA](https://github.com/haotian-liu/LLaVA), [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval), and [VTW](https://github.com/lzhxmu/VTW)
+
+## Citation
+```bib
+@misc{yuan2025shortvefficientmultimodallarge,
+      title={ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers}, 
+      author={Qianhao Yuan and Qingyu Zhang and Yanjiang Liu and Jiawei Chen and Yaojie Lu and Hongyu Lin and Jia Zheng and Xianpei Han and Le Sun},
+      year={2025},
+      eprint={2504.00502},
+      archivePrefix={arXiv},
+      primaryClass={cs.CV},
+      url={https://arxiv.org/abs/2504.00502}, 
+}
+```
