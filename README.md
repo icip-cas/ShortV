@@ -57,9 +57,11 @@ export MODEL_PATH="liuhaotian/llava-v1.5-7b"
 export MODEL_NAME="llava_7b"
 export CONV_MODE="v1"
 export REPLACED_LAYERS="31,29,30,28,0,26,27,25,24,22,23,21,2,3,20,18,17,12,19"
-accelerate launch  --num_processes=1 --main_process_port=12346 -m lmms_eval --model llava \
+accelerate launch  --num_processes=1 --main_process_port=12346 -m lmms_eval \
+    --model llava \
     --model_args pretrained=${MODEL_PATH},conv_template=${CONV_MODE}  \
-    --tasks mmmu_val --batch_size 1 \
+    --tasks mmmu_val \
+    --batch_size 1 \
     --log_samples_suffix ${MODEL_NAME} \
     --output_path ./logs/ 
 ```
