@@ -74,6 +74,7 @@ See [Evaluation.md](https://github.com/icip-cas/ShortV/blob/main/docs/Evaluation
 This work is built upon the [LLaVA](https://github.com/haotian-liu/LLaVA), [lmms-eval](https://github.com/EvolvingLMMs-Lab/lmms-eval), and [VTW](https://github.com/lzhxmu/VTW)
 
 ## Citation
+If you find ShortV useful for your research and applications, please cite using this BibTeX:
 ```bib
 @misc{yuan2025shortvefficientmultimodallarge,
       title={ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers}, 
