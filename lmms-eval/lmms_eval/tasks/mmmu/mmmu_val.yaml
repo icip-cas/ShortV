@@ -1,4 +1,4 @@
-dataset_path: lmms-lab/MMMU
+dataset_path: /141nfs/yuanqianhao2024/SAISA/hf_datasets/MMMU
 task: "mmmu_val"
 test_split: validation
 output_type: generate_until
