@@ -1112,7 +1112,12 @@ class ConfigurableTask(Task):
     @property
     def eval_docs_no_media(self) -> Union[datasets.Dataset, List[dict]]:
         if self.has_test_docs():
-            return self.test_docs_no_media()
+            from llava.model.language_model.llava_llama import temp_cache
+            if temp_cache.cal_lc:
+                import time
+                return self.test_docs_no_media().shuffle(seed=int(time.time()))
+            else:
+                return self.test_docs_no_media()
         elif self.has_validation_docs():
             return self.validation_docs_no_media()
         else:

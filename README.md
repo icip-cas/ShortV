@@ -75,6 +75,7 @@ See [Evaluation.md](https://github.com/icip-cas/ShortV/blob/main/docs/Evaluation
 To identify which layers are ineffective, we calculate visual LC scores for all MLLM layers.
 
 ```bash
+cd lmms-eval
 export MODEL_PATH="liuhaotian/llava-v1.5-7b"
 export MODEL_NAME="llava_7b"
 export CONV_MODE="v1"
@@ -97,13 +98,10 @@ This work is built upon the [LLaVA](https://github.com/haotian-liu/LLaVA), [lmms
 ## Citation
 If you find ShortV useful for your research and applications, please cite using this BibTeX:
 ```bib
-@misc{yuan2025shortvefficientmultimodallarge,
-      title={ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers}, 
-      author={Qianhao Yuan and Qingyu Zhang and Yanjiang Liu and Jiawei Chen and Yaojie Lu and Hongyu Lin and Jia Zheng and Xianpei Han and Le Sun},
-      year={2025},
-      eprint={2504.00502},
-      archivePrefix={arXiv},
-      primaryClass={cs.CV},
-      url={https://arxiv.org/abs/2504.00502}, 
+@article{yuan2025shortv,
+  title={ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers},
+  author={Yuan, Qianhao and Zhang, Qingyu and Liu, Yanjiang and Chen, Jiawei and Lu, Yaojie and Lin, Hongyu and Zheng, Jia and Han, Xianpei and Sun, Le},
+  journal={arXiv preprint arXiv:2504.00502},
+  year={2025}
 }
 ```
