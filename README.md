@@ -1,5 +1,5 @@
-# ShortV
-Code release for "[ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers](https://arxiv.org/abs/2504.00502)"
+# [ICCV 2025] ShortV
+Code release for ICCV 2025 conference paper "[ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers](https://arxiv.org/abs/2504.00502)"
 
 ## Install
 
