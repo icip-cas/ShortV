@@ -98,10 +98,11 @@ This work is built upon the [LLaVA](https://github.com/haotian-liu/LLaVA), [lmms
 ## Citation
 If you find ShortV useful for your research and applications, please cite using this BibTeX:
 ```bib
-@article{yuan2025shortv,
-  title={ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers},
+@inproceedings{yuan2025shortv,
+  title={Shortv: Efficient multimodal large language models by freezing visual tokens in ineffective layers},
   author={Yuan, Qianhao and Zhang, Qingyu and Liu, Yanjiang and Chen, Jiawei and Lu, Yaojie and Lin, Hongyu and Zheng, Jia and Han, Xianpei and Sun, Le},
-  journal={arXiv preprint arXiv:2504.00502},
+  booktitle={Proceedings of the IEEE/CVF International Conference on Computer Vision},
+  pages={329--339},
   year={2025}
 }
 ```
