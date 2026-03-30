@@ -1,6 +1,10 @@
 # [ICCV 2025] ShortV
 Code release for ICCV 2025 conference paper "[ShortV: Efficient Multimodal Large Language Models by Freezing Visual Tokens in Ineffective Layers](https://arxiv.org/abs/2504.00502)"
 
+[![Code License](https://img.shields.io/badge/Code%20License-Apache_2.0-green.svg)](https://github.com/tatsu-lab/stanford_alpaca/blob/main/LICENSE)
+**Usage and License Notices**: This project utilizes certain datasets and checkpoints that are subject to their respective original licenses. Users must comply with all terms and conditions of these original licenses. This project does not impose any additional constraints beyond those stipulated in the original licenses. Furthermore, users are reminded to ensure that their use of the dataset and checkpoints is in compliance with all applicable laws and regulations.
+
+
 ## Install
 
 1. Clone this repository and navigate to ShortV folder
